@@ -5,7 +5,7 @@ var router = express.Router();
 
 
 const MongoClient = require('mongodb').MongoClient;
-const uri = uri;
+const uri = require('../mongodb-credentials');
 const client = new MongoClient(uri, { useNewUrlParser: true });
 
 client.connect(err => {

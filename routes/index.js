@@ -5,7 +5,7 @@ var router = express.Router();
 
 
 const MongoClient = require('mongodb').MongoClient;
-const uri = "mongodb+srv://Jupp:ZtRvmt4HOST9wkqI@wsbanalytics.0dcc4.mongodb.net/WSBAnalytics?retryWrites=true&w=majority";
+const uri = uri;
 const client = new MongoClient(uri, { useNewUrlParser: true });
 
 client.connect(err => {

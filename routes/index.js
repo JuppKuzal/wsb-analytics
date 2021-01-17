@@ -1,35 +1,37 @@
 var express = require('express');
 var router = express.Router();
 
-/* MongoDB Connection */
+/* Database Connection */
 
+const admin = require('firebase-admin');
 
-const MongoClient = require('mongodb').MongoClient;
-const uri = require('../mongodb-credentials');
-const client = new MongoClient(uri, { useNewUrlParser: true });
+const serviceAccount = require('../google-credentials.json');
 
-client.connect(err => {
-  const collection = client.db("WSBAnalytics").collection("StockData");
-  // perform actions on the collection object
-  client.close();
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
 });
+
+const db = admin.firestore();
+
+const collection = db.collection("StockData");
 
 /********************* */
 
 /* Util */
 
 function isValidStockEntry(stockEntry) {
-  return !(stockEntry.ticker && stockEntry.amount);
+  return !(stockEntry.ticker && stockEntry.amount && stockEntry.price);
 }
 
+/********************* */
 
 /* GET all stock data */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   var stockData = [];
 
   try{
     const dbdata = await collection.get();
-    
+
     if(dbdata.empty) {
       // 404 not found
       res.status(404).send();
@@ -51,16 +53,17 @@ router.get('/', (req, res) => {
 });
 
 /* GET stock data by ticker*/
-router.get('/:ticker', (req, res) => {
+router.get('/:ticker', async (req, res) => {
   var stockData = [];
+  let ticker = req.params.ticker.toString().toUpperCase();
 
   try{
     //catch bad req
-    if(req.params.stockTicker === undefined) {
+    if(ticker === undefined) {
       res.status(400).send();
     }
     const dbdata = await collection
-                          .where("ticker", "==", req.query.stockTicker)
+                          .where("ticker", "==", ticker)
                           .get();
     if(dbdata.empty) {
       // 404 not found
@@ -82,9 +85,11 @@ router.get('/:ticker', (req, res) => {
   }
 });
 
-router.post('/', function(req, res, next) {
+router.post('/', async (req, res) => {
   //init
   var stockEntry = req.body;
+
+  let ticker = stockEntry.ticker.toString().toUpperCase();
 
   //400 bad req
   if(isValidStockEntry(stockEntry)) {
@@ -96,12 +101,13 @@ router.post('/', function(req, res, next) {
     const docRef = collection.doc();
     const createTime = Date.now();
     await docRef.set({
-      ticker: stockEntry.ticker,
+      //send the ticker in uppercase from frontend!
+      ticker,
       amount: stockEntry.amount,
       price: stockEntry.price
     })
-    stockEntry.time = createTimel
-    comment.id = docRef.id;
+    stockEntry.time = createTime;
+    stockEntry.id = docRef.id;
     //send post res
     res.status(201).send(stockEntry);
   } catch (error) {
@@ -112,15 +118,17 @@ router.post('/', function(req, res, next) {
 });
 
 //delete by stock ticker in params
-router.delete('/:ticker', function(req, res, next) {
-  
+router.delete('/:ticker', async function(req, res, next) {
+
+  let ticker = req.params.ticker.toString().toUpperCase();
+
   try{
 
-    if(req.query.ticker === undefined){
+    if(ticker === undefined){
       res.status(400).send();
     }
 
-    const dbdata = await collection.where('ticker', '==', req.params.ticker).get();
+    const dbdata = await collection.where('ticker', '==', ticker).get();
 
     if (!dbdata.empty) {
       dbdata.forEach((doc) => {

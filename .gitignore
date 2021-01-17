@@ -104,4 +104,4 @@ dist
 .tern-port
 
 #custom
-mongodb-credentials.json
+google-credentials.json
